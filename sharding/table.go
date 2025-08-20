@@ -13,7 +13,7 @@ import (
 
 // New 分表初始化对象
 // ops 建表参数
-func New(builder TableOptionsBuilder) *TableOption {
+func New(builder *TableOptionsBuilder) *TableOption {
 	option := new(TableOption)
 	for _, op := range builder.funcs {
 		op(option)

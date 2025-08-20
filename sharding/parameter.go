@@ -14,7 +14,7 @@ type ParamsResult struct {
 	IsEndClose bool // 是否闭合，false就是<end，true就使用<=end
 }
 
-func Params(builder ParamsOptionsBuilder) ([]*ParamsResult, error) {
+func Params(builder *ParamsOptionsBuilder) ([]*ParamsResult, error) {
 	option := new(ParamsOption)
 	for _, opf := range builder.funcs {
 		opf(option)
