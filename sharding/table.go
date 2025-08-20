@@ -13,9 +13,9 @@ import (
 
 // New 分表初始化对象
 // ops 建表参数
-func New(ops ...TableOptionFunc) *TableOption {
+func New(builder TableOptionsBuilder) *TableOption {
 	option := new(TableOption)
-	for _, op := range ops {
+	for _, op := range builder.funcs {
 		op(option)
 	}
 	if option.mysqlClient == nil {
@@ -74,42 +74,56 @@ type TableOption struct {
 	err error
 }
 
+type TableOptionsBuilder struct {
+	funcs []TableOptionFunc
+}
+
+func TableBuilder() *TableOptionsBuilder {
+	return &TableOptionsBuilder{}
+}
+
 type TableOptionFunc func(*TableOption)
 
-func WithTableMysqlClient(mysqlClient *sql.DB) TableOptionFunc {
-	return func(opt *TableOption) {
+func (tb *TableOptionsBuilder) WithTableMysqlClient(mysqlClient *sql.DB) *TableOptionsBuilder {
+	tb.funcs = append(tb.funcs, func(opt *TableOption) {
 		opt.mysqlClient = mysqlClient
-	}
+	})
+	return tb
 }
 
-func WithTableRedisClient(client *redis.Client) TableOptionFunc {
-	return func(opt *TableOption) {
+func (tb *TableOptionsBuilder) WithTableRedisClient(client *redis.Client) *TableOptionsBuilder {
+	tb.funcs = append(tb.funcs, func(opt *TableOption) {
 		opt.redisClient = client
-	}
+	})
+	return tb
 }
 
-func WithTableDBName(dbName string) TableOptionFunc {
-	return func(opt *TableOption) {
+func (tb *TableOptionsBuilder) WithTableDBName(dbName string) *TableOptionsBuilder {
+	tb.funcs = append(tb.funcs, func(opt *TableOption) {
 		opt.db = dbName
-	}
+	})
+	return tb
 }
 
-func WithTablePrimary(primary string) TableOptionFunc {
-	return func(opt *TableOption) {
+func (tb *TableOptionsBuilder) WithTablePrimary(primary string) *TableOptionsBuilder {
+	tb.funcs = append(tb.funcs, func(opt *TableOption) {
 		opt.primary = primary
-	}
+	})
+	return tb
 }
 
-func WithTableThisTime(thisTime time.Time) TableOptionFunc {
-	return func(opt *TableOption) {
+func (tb *TableOptionsBuilder) WithTableThisTime(thisTime time.Time) *TableOptionsBuilder {
+	tb.funcs = append(tb.funcs, func(opt *TableOption) {
 		opt.thisTime = thisTime
-	}
+	})
+	return tb
 }
 
-func WithTableType(t Type) TableOptionFunc {
-	return func(opt *TableOption) {
+func (tb *TableOptionsBuilder) WithTableType(t Type) *TableOptionsBuilder {
+	tb.funcs = append(tb.funcs, func(opt *TableOption) {
 		opt.t = t
-	}
+	})
+	return tb
 }
 
 // 内存中查询存在的数据库表
