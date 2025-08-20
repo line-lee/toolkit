@@ -36,13 +36,13 @@ func Params(builder *ParamsOptionsBuilder) ([]*ParamsResult, error) {
 	}
 	switch option.t {
 	case Hour:
-		return option.hour()
+		return option.hour(), nil
 	case Day:
-		return option.day()
+		return option.day(), nil
 	case Month:
-		return option.month()
+		return option.month(), nil
 	case Year:
-		return option.year()
+		return option.year(), nil
 	default:
 		return nil, errors.New("WARNING：type unknown")
 	}
@@ -108,7 +108,7 @@ func (pb *ParamsOptionsBuilder) Type(t Type) *ParamsOptionsBuilder {
 	return pb
 }
 
-func (po *ParamsOption) hour() ([]*ParamsResult, error) {
+func (po *ParamsOption) hour() []*ParamsResult {
 	const timeFormat = "2006010215"
 	var result = make([]*ParamsResult, 0)
 	if po.start.Year() == po.end.Year() &&
@@ -117,7 +117,7 @@ func (po *ParamsOption) hour() ([]*ParamsResult, error) {
 		po.start.Hour() == po.end.Hour() {
 		// 同年同月同日同时
 		var tableName = fmt.Sprintf("%s_%s", po.primary, po.start.Format(timeFormat))
-		return []*ParamsResult{{TableName: tableName, Start: po.start, End: po.end, IsEndClose: po.isEndClose}}, nil
+		return []*ParamsResult{{TableName: tableName, Start: po.start, End: po.end, IsEndClose: po.isEndClose}}
 	}
 	// 举个栗子：按月分表，按小时统计，查询时间是 2025-08-19 17:45:00到2025-10-01 10:20:00
 	// 开始需要增加参数 2025-08-19 17:00到2025-08-19 18:00，左闭右开
@@ -142,15 +142,15 @@ func (po *ParamsOption) hour() ([]*ParamsResult, error) {
 	if !po.isEndClose &&
 		po.end.Minute() == 0 &&
 		po.end.Second() == 0 {
-		return result, nil
+		return result
 	}
 	// 结尾增加参数 2025-10-01 10:00:00到2025-10-01 10:20:00，左闭右闭
 	var tableName = fmt.Sprintf("%s_%s", po.primary, po.end.Format(timeFormat))
 	result = append(result, &ParamsResult{TableName: tableName, Start: nextStart, End: po.end, IsEndClose: po.isEndClose})
-	return result, nil
+	return result
 }
 
-func (po *ParamsOption) day() ([]*ParamsResult, error) {
+func (po *ParamsOption) day() []*ParamsResult {
 	const timeFormat = "20060102"
 	var result = make([]*ParamsResult, 0)
 	if po.start.Year() == po.end.Year() &&
@@ -158,7 +158,7 @@ func (po *ParamsOption) day() ([]*ParamsResult, error) {
 		po.start.Day() == po.end.Day() {
 		// 同年同月同日
 		var tableName = fmt.Sprintf("%s_%s", po.primary, po.start.Format(timeFormat))
-		return []*ParamsResult{{TableName: tableName, Start: po.start, End: po.end, IsEndClose: po.isEndClose}}, nil
+		return []*ParamsResult{{TableName: tableName, Start: po.start, End: po.end, IsEndClose: po.isEndClose}}
 	}
 	// 举个栗子：按月分表，按小时统计，查询时间是 2025-08-19 17:45:00到2025-10-01 10:20:00
 	// 开始需要增加参数 2025-08-19 17:00到2025-08-19 18:00，左闭右开
@@ -183,22 +183,22 @@ func (po *ParamsOption) day() ([]*ParamsResult, error) {
 		po.end.Hour() == 0 &&
 		po.end.Minute() == 0 &&
 		po.end.Second() == 0 {
-		return result, nil
+		return result
 	}
 	// 结尾增加参数 2025-10-01 00:00:00到2025-10-01 10:20:00，左闭右闭
 	var tableName = fmt.Sprintf("%s_%s", po.primary, po.end.Format("20060102"))
 	result = append(result, &ParamsResult{TableName: tableName, Start: nextStart, End: po.end, IsEndClose: po.isEndClose})
-	return result, nil
+	return result
 }
 
-func (po *ParamsOption) month() ([]*ParamsResult, error) {
+func (po *ParamsOption) month() []*ParamsResult {
 	const timeFormat = "200601"
 	var result = make([]*ParamsResult, 0)
 	if po.start.Year() == po.end.Year() &&
 		po.start.Month() == po.end.Month() {
 		// 同年同月
 		var tableName = fmt.Sprintf("%s_%s", po.primary, po.start.Format(timeFormat))
-		return []*ParamsResult{{TableName: tableName, Start: po.start, End: po.end, IsEndClose: po.isEndClose}}, nil
+		return []*ParamsResult{{TableName: tableName, Start: po.start, End: po.end, IsEndClose: po.isEndClose}}
 	}
 	// 举个栗子：按月分表，按小时统计，查询时间是 2025-08-19 17:00到2025-10-01 10:00
 	// 开始需要增加参数 2025-08-19 17:00到2025-09-01 00:00，左闭右开
@@ -223,21 +223,21 @@ func (po *ParamsOption) month() ([]*ParamsResult, error) {
 		po.end.Hour() == 0 &&
 		po.end.Minute() == 0 &&
 		po.end.Second() == 0 {
-		return result, nil
+		return result
 	}
 	// 结尾增加参数 2025-10-01 00:00:00到2025-10-01 10:00:00，左闭右闭
 	var tableName = fmt.Sprintf("%s_%s", po.primary, po.end.Format(timeFormat))
 	result = append(result, &ParamsResult{TableName: tableName, Start: nextStart, End: po.end, IsEndClose: po.isEndClose})
-	return result, nil
+	return result
 }
 
-func (po *ParamsOption) year() ([]*ParamsResult, error) {
+func (po *ParamsOption) year() []*ParamsResult {
 	const timeFormat = "2006"
 	var result = make([]*ParamsResult, 0)
 	if po.start.Year() == po.end.Year() {
 		// 同年
 		var tableName = fmt.Sprintf("%s_%s", po.primary, po.start.Format(timeFormat))
-		return []*ParamsResult{{TableName: tableName, Start: po.start, End: po.end, IsEndClose: po.isEndClose}}, nil
+		return []*ParamsResult{{TableName: tableName, Start: po.start, End: po.end, IsEndClose: po.isEndClose}}
 	}
 	// 举个栗子：按月分表，按小时统计，查询时间是 2025-08-19 17:45:00到2027-10-01 10:20:00
 	// 开始需要增加参数 2025-08-19 17:45:00到2026-01-01 00:00:00，左闭右开
@@ -262,10 +262,10 @@ func (po *ParamsOption) year() ([]*ParamsResult, error) {
 		po.end.Hour() == 0 &&
 		po.end.Minute() == 0 &&
 		po.end.Second() == 0 {
-		return result, nil
+		return result
 	}
 	// 结尾增加参数 2027-01-01 00:00:00到2027-10-01 10:20:00，左闭右闭
 	var tableName = fmt.Sprintf("%s_%s", po.primary, po.end.Format(timeFormat))
 	result = append(result, &ParamsResult{TableName: tableName, Start: nextStart, End: po.end, IsEndClose: po.isEndClose})
-	return result, nil
+	return result
 }

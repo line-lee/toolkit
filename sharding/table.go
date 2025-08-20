@@ -134,8 +134,8 @@ func (to *TableOption) GetTableName() (string, error) {
 		return "", to.err
 	}
 	if !to.lock() {
-		log.Printf("mysql分表，表存在检查，分布式锁获取失败，able:%s,db:%s\n", to.expect, to.db)
-		return "", errors.New("mysql分表，表存在检查，分布式锁获取失败")
+		log.Printf("sharding.GetTableName，分布式锁获取失败:\n[table:]%s\n[db:]%s\n", to.expect, to.db)
+		return "", errors.New("sharding.GetTableName，分布式锁获取失败")
 	}
 	defer to.unlock()
 	if isExist := tm[to.expect]; !isExist {
@@ -144,22 +144,22 @@ func (to *TableOption) GetTableName() (string, error) {
 		var tableName string
 		err := to.mysqlClient.QueryRow(tableCheckSql, to.expect).Scan(&tableName)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			log.Printf("mysql分表，表存在检查，information_schema.TABLES 查询错误,table:%s,db:%s, err:%v\n", to.expect, to.db, err)
+			log.Printf("sharding.GetTableName，表存在检查错误:\n[sql:]%s\n[table:]%s\n[db:]%s\n[err:]%v\n", tableCheckSql, to.expect, to.db, err)
 			return "", err
 		}
 		if errors.Is(err, sql.ErrNoRows) {
 			// 表不存在，初始建表结构，新建表
-			showCreateSql := fmt.Sprintf("SHOW CREATE TABLE %s.%s", to.db, to.primary)
+			showCreateSql := fmt.Sprintf("SHOW CREATE TABLE `%s`.`%s`", to.db, to.primary)
 			var showTableName, createSql string
 			err = to.mysqlClient.QueryRow(showCreateSql).Scan(&showTableName, &createSql)
 			if err != nil {
-				log.Printf("mysql分表，表存在检查，information_schema.TABLES 查询错误,table:%s,db:%s, err:%v\n", to.expect, to.db, err)
+				log.Printf("sharding.GetTableName，建表信息获取失败:\n[sql:]%s\n[table:]%s\n[db:]%s\n[err:]%v\n", showCreateSql, to.primary, to.db, err)
 				return "", err
 			}
 			createSql = strings.ReplaceAll(createSql, fmt.Sprintf("`%s`", to.primary), fmt.Sprintf("`%s`.`%s`", to.db, to.expect))
 			_, err = to.mysqlClient.Exec(createSql)
 			if err != nil {
-				log.Printf("mysql分表，创建新表报错,table:%s,db:%s, err:%v\n", to.expect, to.db, err)
+				log.Printf("sharding.GetTableName，创建新表报错:\n[sql:]%s\n[err:]%v\n", createSql, err)
 				return "", err
 			}
 		}
