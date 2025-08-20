@@ -14,9 +14,9 @@ type ParamsResult struct {
 	IsEndClose bool // 是否闭合，false就是<end，true就使用<=end
 }
 
-func Params(options ...ParamsOptionFunc) ([]*ParamsResult, error) {
+func Params(builder ParamsOptionsBuilder) ([]*ParamsResult, error) {
 	option := new(ParamsOption)
-	for _, opf := range options {
+	for _, opf := range builder.funcs {
 		opf(option)
 	}
 	if stringkit.IsBlank(option.primary) {
@@ -63,36 +63,49 @@ type ParamsOption struct {
 	t Type
 }
 
+type ParamsOptionsBuilder struct {
+	funcs []ParamsOptionFunc
+}
+
+func ParamsBuilder() *ParamsOptionsBuilder {
+	return &ParamsOptionsBuilder{}
+}
+
 type ParamsOptionFunc func(opt *ParamsOption)
 
-func WithParamsPrimary(primary string) ParamsOptionFunc {
-	return func(option *ParamsOption) {
+func (pb *ParamsOptionsBuilder) Primary(primary string) *ParamsOptionsBuilder {
+	pb.funcs = append(pb.funcs, func(option *ParamsOption) {
 		option.primary = primary
-	}
+	})
+	return pb
 }
 
-func WithParamsStart(start time.Time) ParamsOptionFunc {
-	return func(option *ParamsOption) {
+func (pb *ParamsOptionsBuilder) Start(start time.Time) *ParamsOptionsBuilder {
+	pb.funcs = append(pb.funcs, func(option *ParamsOption) {
 		option.start = start
-	}
+	})
+	return pb
 }
 
-func WithParamsEnd(end time.Time) ParamsOptionFunc {
-	return func(option *ParamsOption) {
+func (pb *ParamsOptionsBuilder) End(end time.Time) *ParamsOptionsBuilder {
+	pb.funcs = append(pb.funcs, func(option *ParamsOption) {
 		option.end = end
-	}
+	})
+	return pb
 }
 
-func WithParamsEndClose(isClose bool) ParamsOptionFunc {
-	return func(option *ParamsOption) {
+func (pb *ParamsOptionsBuilder) IsEndClose(isClose bool) *ParamsOptionsBuilder {
+	pb.funcs = append(pb.funcs, func(option *ParamsOption) {
 		option.isEndClose = isClose
-	}
+	})
+	return pb
 }
 
-func WithParamsType(t Type) ParamsOptionFunc {
-	return func(option *ParamsOption) {
+func (pb *ParamsOptionsBuilder) Type(t Type) *ParamsOptionsBuilder {
+	pb.funcs = append(pb.funcs, func(option *ParamsOption) {
 		option.t = t
-	}
+	})
+	return pb
 }
 
 func (po *ParamsOption) hour() ([]*ParamsResult, error) {

@@ -84,42 +84,42 @@ func TableBuilder() *TableOptionsBuilder {
 
 type TableOptionFunc func(*TableOption)
 
-func (tb *TableOptionsBuilder) WithTableMysqlClient(mysqlClient *sql.DB) *TableOptionsBuilder {
+func (tb *TableOptionsBuilder) MysqlClient(mysqlClient *sql.DB) *TableOptionsBuilder {
 	tb.funcs = append(tb.funcs, func(opt *TableOption) {
 		opt.mysqlClient = mysqlClient
 	})
 	return tb
 }
 
-func (tb *TableOptionsBuilder) WithTableRedisClient(client *redis.Client) *TableOptionsBuilder {
+func (tb *TableOptionsBuilder) RedisClient(client *redis.Client) *TableOptionsBuilder {
 	tb.funcs = append(tb.funcs, func(opt *TableOption) {
 		opt.redisClient = client
 	})
 	return tb
 }
 
-func (tb *TableOptionsBuilder) WithTableDBName(dbName string) *TableOptionsBuilder {
+func (tb *TableOptionsBuilder) DBName(dbName string) *TableOptionsBuilder {
 	tb.funcs = append(tb.funcs, func(opt *TableOption) {
 		opt.db = dbName
 	})
 	return tb
 }
 
-func (tb *TableOptionsBuilder) WithTablePrimary(primary string) *TableOptionsBuilder {
+func (tb *TableOptionsBuilder) Primary(primary string) *TableOptionsBuilder {
 	tb.funcs = append(tb.funcs, func(opt *TableOption) {
 		opt.primary = primary
 	})
 	return tb
 }
 
-func (tb *TableOptionsBuilder) WithTableThisTime(thisTime time.Time) *TableOptionsBuilder {
+func (tb *TableOptionsBuilder) ThisTime(thisTime time.Time) *TableOptionsBuilder {
 	tb.funcs = append(tb.funcs, func(opt *TableOption) {
 		opt.thisTime = thisTime
 	})
 	return tb
 }
 
-func (tb *TableOptionsBuilder) WithTableType(t Type) *TableOptionsBuilder {
+func (tb *TableOptionsBuilder) Type(t Type) *TableOptionsBuilder {
 	tb.funcs = append(tb.funcs, func(opt *TableOption) {
 		opt.t = t
 	})
