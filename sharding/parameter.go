@@ -3,7 +3,7 @@ package sharding
 import (
 	"errors"
 	"fmt"
-	"github.com/line-lee/tookit/stringkit"
+	"github.com/line-lee/toolkit/stringkit"
 	"time"
 )
 

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/go-redis/redis"
-	"github.com/line-lee/tookit/stringkit"
+	"github.com/line-lee/toolkit/stringkit"
 	"log"
 	"strings"
 	"time"

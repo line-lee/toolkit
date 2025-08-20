@@ -1,4 +1,4 @@
-module github.com/line-lee/tookit
+module github.com/line-lee/toolkit
 
 go 1.24.0
 
