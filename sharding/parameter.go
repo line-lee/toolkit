@@ -3,7 +3,7 @@ package sharding
 import (
 	"errors"
 	"fmt"
-	"github.com/line-lee/toolkit/stringkit"
+	"github.com/line-lee/toolkit/beankit"
 	"time"
 )
 
@@ -19,7 +19,7 @@ func Params(builder *ParamsOptionsBuilder) ([]*ParamsResult, error) {
 	for _, opf := range builder.funcs {
 		opf(option)
 	}
-	if stringkit.IsBlank(option.primary) {
+	if beankit.IsStringBlank(option.primary) {
 		return nil, errors.New("primary option is required，使用 WithParamsPrimary 传入option参数")
 	}
 	if option.start.IsZero() {

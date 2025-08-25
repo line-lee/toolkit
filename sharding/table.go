@@ -1,13 +1,15 @@
 package sharding
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/go-redis/redis"
-	"github.com/line-lee/toolkit/stringkit"
+	"github.com/line-lee/toolkit/beankit"
+	"github.com/redis/go-redis/v9"
 	"log"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -24,10 +26,10 @@ func New(builder *TableOptionsBuilder) *TableOption {
 	if option.redisClient == nil {
 		return &TableOption{err: errors.New("分表初始化对象,New()参数中， option WithRedisClient 必填")}
 	}
-	if stringkit.IsBlank(option.db) {
+	if beankit.IsStringBlank(option.db) {
 		return &TableOption{err: errors.New("分表初始化对象,New()参数中， option WithDBName 必填")}
 	}
-	if stringkit.IsBlank(option.primary) {
+	if beankit.IsStringBlank(option.primary) {
 		return &TableOption{err: errors.New("分表初始化对象,New()参数中， option WithPrimary 必填")}
 	}
 	if option.thisTime.IsZero() {
@@ -126,8 +128,8 @@ func (tb *TableOptionsBuilder) Type(t Type) *TableOptionsBuilder {
 	return tb
 }
 
-// 内存中查询存在的数据库表
-var tm = make(map[string]bool)
+// 缓存某些关键信息，减少sql查询
+var cache sync.Map
 
 func (to *TableOption) GetTableName() (string, error) {
 	if to.err != nil {
@@ -138,43 +140,37 @@ func (to *TableOption) GetTableName() (string, error) {
 		return "", errors.New("sharding.GetTableName，分布式锁获取失败")
 	}
 	defer to.unlock()
-	if isExist := tm[to.expect]; !isExist {
-		// 内存不存在，继续查库
-		tableCheckSql := fmt.Sprintf("SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = '%s' AND TABLE_NAME = ?", to.db)
-		var tableName string
-		err := to.mysqlClient.QueryRow(tableCheckSql, to.expect).Scan(&tableName)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			log.Printf("sharding.GetTableName，表存在检查错误:\n[sql:]%s\n[table:]%s\n[db:]%s\n[err:]%v\n", tableCheckSql, to.expect, to.db, err)
-			return "", err
-		}
-		if errors.Is(err, sql.ErrNoRows) {
-			// 表不存在，初始建表结构，新建表
-			showCreateSql := fmt.Sprintf("SHOW CREATE TABLE `%s`.`%s`", to.db, to.primary)
-			var showTableName, createSql string
-			err = to.mysqlClient.QueryRow(showCreateSql).Scan(&showTableName, &createSql)
-			if err != nil {
-				log.Printf("sharding.GetTableName，建表信息获取失败:\n[sql:]%s\n[table:]%s\n[db:]%s\n[err:]%v\n", showCreateSql, to.primary, to.db, err)
-				return "", err
-			}
-			createSql = strings.ReplaceAll(createSql, fmt.Sprintf("`%s`", to.primary), fmt.Sprintf("`%s`.`%s`", to.db, to.expect))
-			_, err = to.mysqlClient.Exec(createSql)
-			if err != nil {
-				log.Printf("sharding.GetTableName，创建新表报错:\n[sql:]%s\n[err:]%v\n", createSql, err)
-				return "", err
-			}
-		}
-		tm[to.expect] = true
+	var expectKey = fmt.Sprintf("expect_%s_%s", to.db, to.expect)
+	if isExist, ok := cache.Load(expectKey); ok && isExist.(bool) {
+		// 内存发现分表已有信息
+		return to.expect, nil
 	}
+	// 表不存在，初始建表结构，新建表
+	showCreateSql := fmt.Sprintf("SHOW CREATE TABLE `%s`.`%s`", to.db, to.primary)
+	var showTableName, createSql string
+	err := to.mysqlClient.QueryRow(showCreateSql).Scan(&showTableName, &createSql)
+	if err != nil {
+		log.Printf("sharding.GetTableName，建表信息获取失败:\n[sql:]%s\n[table:]%s\n[db:]%s\n[err:]%v\n", showCreateSql, to.primary, to.db, err)
+		return "", err
+	}
+	createSql = strings.ReplaceAll(createSql, fmt.Sprintf("CREATE TABLE `%s`", to.primary), fmt.Sprintf("CREATE TABLE IF NOT EXISTS `%s`.`%s`", to.db, to.expect))
+	_, err = to.mysqlClient.Exec(createSql)
+	if err != nil {
+		log.Printf("sharding.GetTableName，创建新表报错:\n[sql:]%s\n[err:]%v\n", createSql, err)
+		return "", err
+	}
+	cache.Store(expectKey, true)
 	return to.expect, nil
 }
 
 func (to *TableOption) lock() bool {
 	// count：重试计数器；retry：重试次数
 	var count, retry = 1, 50
-	for !to.redisClient.SetNX(fmt.Sprintf("SHARDING_TABLE_LOCK_%s_%s", to.db, to.primary), 1234, 5*time.Second).Val() {
+	for !to.redisClient.SetNX(context.Background(), fmt.Sprintf("SHARDING_TABLE_LOCK_%s_%s", to.db, to.primary), 1234, 5*time.Second).Val() {
 		if count > retry {
 			return false
 		}
+
 		count++
 		time.Sleep(100 * time.Millisecond)
 	}
@@ -182,5 +178,5 @@ func (to *TableOption) lock() bool {
 }
 
 func (to *TableOption) unlock() {
-	to.redisClient.Del(fmt.Sprintf("SHARDING_TABLE_LOCK_%s_%s", to.db, to.primary))
+	to.redisClient.Del(context.Background(), fmt.Sprintf("SHARDING_TABLE_LOCK_%s_%s", to.db, to.primary))
 }
